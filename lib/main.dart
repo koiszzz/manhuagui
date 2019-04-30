@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
-import 'dart:convert';
-import 'package:html/parser.dart' show parse;
+import 'comic.dart';
+import 'baseUtil.dart';
 
 void main() => runApp(MyApp());
 
@@ -16,45 +15,6 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       home: MyHomePage(title: '首页'),
-    );
-  }
-}
-
-class Comic {
-  var url;
-  var title;
-  var lastUpdate;
-  var cover;
-
-  Comic({this.url, this.title, this.lastUpdate, this.cover});
-}
-
-class DownGroup {
-  String value;
-  String name;
-
-  DownGroup({this.value, this.name});
-}
-
-class MyPage extends StatelessWidget {
-  @required
-  final title;
-
-  MyPage({Key key, this.title}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Container(
-        child: new Column(
-          children: <Widget>[
-            Center(
-              child: Text('something display'),
-            )
-          ],
-        ),
-      ),
     );
   }
 }
@@ -85,10 +45,7 @@ class _MyHomePageState extends State<MyHomePage> {
   initState() {
     super.initState();
     dropdown1Value = list.first;
-    this._searchComics().then(((comics) =>
-    {
-    comics.forEach(_addComics)
-    }));
+    this._searchComics().then(((comics) => {comics.forEach(_addComics)}));
   }
 
   _addComics(dynamic comic) {
@@ -109,10 +66,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 _pageNum.toString());
             if (_curIndex < _pageNum) {
               _curIndex++;
-              _searchComics().then(((comics) =>
-              {
-              comics.forEach(_addComics)
-              }));
+              _searchComics().then(((comics) => {comics.forEach(_addComics)}));
             } else {
               return Text('当前已加载到:' +
                   _curIndex.toString() +
@@ -125,80 +79,72 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _buildRow(Comic comic) {
-    return new Card(
-      child: Row(
-        children: <Widget>[
-          Container(
-            height: 120,
-            padding: const EdgeInsets.all(5.0),
-            child: Image.network(comic.cover),
-          ),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(comic.title),
-                Text(
-                  comic.lastUpdate,
-                ),
-              ],
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => ComicDetail(
+                      comic: comic,
+                    )));
+      },
+      child: Card(
+        child: Row(
+          children: <Widget>[
+            Container(
+              height: 120,
+              padding: const EdgeInsets.all(5.0),
+              child: Image.network(comic.cover),
             ),
-          ),
-        ],
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(comic.title),
+                  Text(
+                    comic.lastUpdate,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Future<List<Comic>> _searchComics() async {
     var url = 'https://www.manhuagui.com/list/japan_shaonv_2018/' +
-        (dropdown1Value == null ? 'index' : dropdown1Value.value) + '_p' +
+        (dropdown1Value == null ? 'index' : dropdown1Value.value) +
+        '_p' +
         _curIndex.toString() +
         '.html';
     print('url: $url');
     try {
-      var httpClient = new HttpClient();
-      var request = await httpClient.getUrl(Uri.parse(url));
-      var response = await request.close();
-      print(response.statusCode);
-      if (response.statusCode == HttpStatus.ok) {
-        var docStr = await response.transform(utf8.decoder).join();
-        var document = parse(docStr);
-        var pageInfoEle = document
-            .getElementsByClassName('result-count')
-            .first
-            .getElementsByTagName('strong');
-        if (pageInfoEle.length == 3) {
-          _pageNum = int.parse(pageInfoEle[1].innerHtml);
-        }
-        var list = <Comic>[];
-        for (var child in document
-            .getElementById('contList')
-            .children) {
-          var attr = child.firstChild.attributes;
-          var url = attr['href'];
-          var title = attr['title'];
-          var cover = child
-              .getElementsByTagName('img')
-              .first
-              .attributes['src'];
-          if (cover == null) {
-            cover =
-            child
-                .getElementsByTagName('img')
-                .first
-                .attributes['data-src'];
-          }
-          var lastUpdate = child
-              .getElementsByClassName('tt')
-              .first
-              .innerHtml;
-          list.add(new Comic(
-              url: url, title: title, cover: cover, lastUpdate: lastUpdate));
-        }
-        return list;
-      } else {
-        return [];
+      var docStr = await BaseUtil.httpGet(url);
+      var document = BaseUtil.parseHtml(docStr);
+      var pageInfoEle = document
+          .getElementsByClassName('result-count')
+          .first
+          .getElementsByTagName('strong');
+      if (pageInfoEle.length == 3) {
+        _pageNum = int.parse(pageInfoEle[1].innerHtml);
       }
+      var list = <Comic>[];
+      for (var child in document.getElementById('contList').children) {
+        var attr = child.firstChild.attributes;
+        var url = attr['href'];
+        var title = attr['title'];
+        var cover = child.getElementsByTagName('img').first.attributes['src'];
+        if (cover == null) {
+          cover =
+              child.getElementsByTagName('img').first.attributes['data-src'];
+        }
+        var lastUpdate = child.getElementsByClassName('tt').first.innerHtml;
+        list.add(new Comic(
+            url: url, title: title, cover: cover, lastUpdate: lastUpdate));
+      }
+      return list;
     } catch (exception) {
       print(exception);
       return [];
@@ -228,45 +174,43 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       drawer: Drawer(
         child: Column(
-            children: <Widget>[
-        UserAccountsDrawerHeader(
-        accountName: const Text('Kois'),
-        accountEmail: const Text('kois@example.com'),
+          children: <Widget>[
+            UserAccountsDrawerHeader(
+              accountName: const Text('Kois'),
+              accountEmail: const Text('kois@example.com'),
+            ),
+            Expanded(
+                child: Container(
+                    child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: <Widget>[
+                ListTile(
+                  title: const Text('排列方式:'),
+                  trailing: DropdownButton<DownGroup>(
+                    value: dropdown1Value,
+                    onChanged: (DownGroup newValue) {
+                      setState(() {
+                        dropdown1Value = newValue;
+                        _comics.clear();
+                        _searchComics()
+                            .then(((comics) => {comics.forEach(_addComics)}));
+                      });
+                    },
+                    items: list
+                        .map<DropdownMenuItem<DownGroup>>((DownGroup group) {
+                      return DropdownMenuItem<DownGroup>(
+                        value: group,
+                        child: Text(group.name),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            )))
+          ],
+        ),
       ),
-      Expanded(
-        child: Container(
-            child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: <Widget>[
-            ListTile(
-            title: const Text('排列方式:'),
-            trailing: DropdownButton<DownGroup>(
-                value: dropdown1Value,
-                onChanged: (DownGroup newValue) {
-                  setState(() {
-                    dropdown1Value = newValue;
-                    _comics.clear();
-                    _searchComics().then(((comics) =>
-                    {
-                    comics.forEach(_addComics)
-                    }));
-                  });
-                },
-                items: list.map<DropdownMenuItem<DownGroup>>((DownGroup group) {
-        return DropdownMenuItem<DownGroup>(
-        value: group,
-        child: Text(group.name),
-        );
-        }).toList(),
-      ),
-    ),
-    ],
-    ))
-    )
-    ],
-    ),
-    ),
-    body: _buildSuggestions(),
+      body: _buildSuggestions(),
     );
-    }
+  }
 }
