@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'baseUtil.dart';
+import 'util/baseUtil.dart';
 import 'package:html/dom.dart' as html;
 
 class _ComicDetail {
