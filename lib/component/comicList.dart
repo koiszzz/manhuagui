@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/component/comic.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
 import 'util/baseUtil.dart';
 
 class ComicList extends StatefulWidget {
@@ -12,11 +14,10 @@ class ComicList extends StatefulWidget {
 
 class _ComicList extends State<ComicList> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  bool isLoading = true;
   bool isLoadMore = false;
   final _pageSize = 42; //每页漫画书
-  List<Comic> _comics = <Comic>[];
-  var _curIndex = 1; //当前页数
+  List<Comic> _comics = new List();
+  var _curIndex = 0; //当前页数
   var _pageNum = 1; //页面总数
   ScrollController _scrollController = new ScrollController();
   final List<DownGroup> indexOrderList = <DownGroup>[
@@ -29,31 +30,22 @@ class _ComicList extends State<ComicList> {
 
   @override
   initState() {
-    super.initState();
     dropdown1Value = indexOrderList.first;
-    initList();
+//    initList();
     _scrollController.addListener(() {
       if (_scrollController.position.pixels ==
           _scrollController.position.maxScrollExtent) {
-        print('listener working');
         _loadMore();
       }
     });
+    super.initState();
+    _loadMore();
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
-  }
-
-  initList() {
-    this._searchComics().then(((comics) {
-      setState(() {
-        isLoading = false;
-        _comics = comics;
-      });
-    }));
   }
 
   _loadMore() async {
@@ -96,28 +88,13 @@ class _ComicList extends State<ComicList> {
         ));
   }
 
-  Widget _buildBody() {
-    if (isLoading) {
-      return Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: new Center(
-            child: new Opacity(
-              opacity: isLoading ? 1.0 : 0.0,
-              child: new CircularProgressIndicator(),
-            ),
-          ));
-    } else {
-      return _buildList();
-    }
-  }
-
   Widget _buildList() {
     return RefreshIndicator(
       child: ListView.builder(
         padding: const EdgeInsets.all(16.0),
-        itemCount: _comics.length,
+        itemCount: _comics.length + 1,
         itemBuilder: (context, i) {
-          if (i == _comics.length - 1) {
+          if (i == _comics.length) {
             return _buildEndLine();
           }
           return _buildRow(_comics[i]);
@@ -144,7 +121,11 @@ class _ComicList extends State<ComicList> {
             Container(
               height: 120,
               padding: const EdgeInsets.all(5.0),
-              child: Image.network(comic.cover),
+              child: CachedNetworkImage(
+                placeholder: (context, url) => Container(width: 80, child: Center(child: CircularProgressIndicator(),),),
+                errorWidget: (context, url, error) => Container(width: 80, child: Center(child:  Icon(Icons.error))),
+                imageUrl: comic.cover,
+              ),
             ),
             Flexible(
               child: Column(
@@ -222,7 +203,7 @@ class _ComicList extends State<ComicList> {
           ),
         ],
       ),
-      body: _buildBody(),
+      body: _buildList(),
     );
   }
 }
