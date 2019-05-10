@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'util/baseUtil.dart';
 import 'package:html/dom.dart' as html;
 
@@ -126,15 +127,25 @@ class _ComicDetailState extends State<ComicDetail> {
       print(_comicDetail == null);
       return Text('数据加载中');
     } else {
-      return Container(
-        padding: EdgeInsets.all(5.0),
-        child: Column(
-          children: <Widget>[
-            Row(
+      return ListView(
+        children: <Widget>[
+          Card(
+            child: Row(
               children: <Widget>[
-                Image.network(widget.comic.cover),
-                Container(
+                CachedNetworkImage(
+                  placeholder: (context, url) => Container(
+                    width: 80,
+                    child: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                      width: 80, child: Center(child: Icon(Icons.error))),
+                  imageUrl: widget.comic.cover,
+                ),
+                Flexible(
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text('标题: ${_comicDetail.title}'),
                       Text('作者: ${_comicDetail.author}')
@@ -143,11 +154,13 @@ class _ComicDetailState extends State<ComicDetail> {
                 )
               ],
             ),
-            Column(
+          ),
+          Container(
+            child: Column(
               children: _buildSection(_comicDetail.sections),
-            )
-          ],
-        ),
+            ),
+          )
+        ],
       );
     }
   }
@@ -158,11 +171,12 @@ class _ComicDetailState extends State<ComicDetail> {
               children: <Widget>[
                 Text(section.name),
                 Container(
-                  height: 400,
+                  color: Colors.red,
+                  height: 200,
                   child: GridView.count(
-                    crossAxisCount: 3,
+                    crossAxisCount: 4,
                     padding: const EdgeInsets.all(4.0),
-                    childAspectRatio: 1.3,
+                    childAspectRatio: 1.8,
                     scrollDirection: Axis.vertical,
                     children: _buildChapter(section.chapters),
                   ),
@@ -176,7 +190,9 @@ class _ComicDetailState extends State<ComicDetail> {
     print('load list ${list.length}');
     return list
         .map((chapter) => Card(
-              child: Text(chapter.name),
+              child: Center(
+                child: Text(chapter.name),
+              ),
             ))
         .toList();
   }
