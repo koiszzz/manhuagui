@@ -45,7 +45,10 @@ class ComicDetail extends StatefulWidget {
   _ComicDetailState createState() => _ComicDetailState();
 }
 
+enum LoadState { LOADING, SUCCESS, FAIL }
+
 class _ComicDetailState extends State<ComicDetail> {
+  var _loadState = LoadState.LOADING;
   _ComicDetail _comicDetail;
 
   @override
@@ -55,6 +58,9 @@ class _ComicDetailState extends State<ComicDetail> {
   }
 
   Future<_ComicDetail> _loadComicDetail() async {
+    setState(() {
+      this._loadState = LoadState.LOADING;
+    });
     String url = "https://www.manhuagui.com" + widget.comic.url;
     print('url: $url');
     String docStr = await BaseUtil.httpGet(url);
@@ -114,95 +120,65 @@ class _ComicDetailState extends State<ComicDetail> {
         temp.sections.add(tempS);
       }
       setState(() {
+        _loadState = LoadState.SUCCESS;
         _comicDetail = temp;
       });
       return temp;
     } else {
+      _loadState = LoadState.FAIL;
       return null;
     }
   }
 
   Widget _buildBody() {
-    if (_comicDetail == null) {
-      print(_comicDetail == null);
-      return Text('数据加载中');
-    } else {
-      return ListView(
-        children: <Widget>[
-          Card(
-            child: Row(
-              children: <Widget>[
-                CachedNetworkImage(
-                  placeholder: (context, url) => Container(
-                    width: 80,
-                    child: Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                      width: 80, child: Center(child: Icon(Icons.error))),
-                  imageUrl: widget.comic.cover,
+    switch (this._loadState) {
+      case LoadState.FAIL:
+        return Center(
+          child: FlatButton(onPressed: _loadComicDetail, child: Text('重新加载')),
+        );
+      case LoadState.LOADING:
+        return _buildLoad();
+      case LoadState.SUCCESS:
+        return DefaultTabController(
+            length: _comicDetail.sections.length,
+            child: new Scaffold(
+              appBar: new AppBar(
+                title: Text(widget.comic.title),
+                bottom: new TabBar(
+                  isScrollable: true,
+                  tabs: _comicDetail.sections.map((_Section section) {
+                    return new Tab(
+                      text: section.name,
+                      icon: new Icon(Icons.book),
+                    );
+                  }).toList(),
                 ),
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text('标题: ${_comicDetail.title}'),
-                      Text('作者: ${_comicDetail.author}')
-                    ],
-                  ),
-                )
-              ],
-            ),
-          ),
-          Container(
-            child: Column(
-              children: _buildSection(_comicDetail.sections),
-            ),
-          )
-        ],
-      );
+              ),
+              body: TabBarView(
+                children: _comicDetail.sections.map((_Section section) {
+                  return ListView(
+                    padding: const EdgeInsets.all(16.0),
+                    children: section.chapters
+                        .map((_Chapter chapter) => ListTile(
+                      title: Text(chapter.name),
+                    ))
+                        .toList(),
+                  );
+                }).toList(),
+              ),
+            ));
     }
   }
 
-  List<Widget> _buildSection(List<_Section> list) {
-    return list
-        .map((section) => Column(
-              children: <Widget>[
-                Text(section.name),
-                Container(
-                  color: Colors.red,
-                  height: 200,
-                  child: GridView.count(
-                    crossAxisCount: 4,
-                    padding: const EdgeInsets.all(4.0),
-                    childAspectRatio: 1.8,
-                    scrollDirection: Axis.vertical,
-                    children: _buildChapter(section.chapters),
-                  ),
-                )
-              ],
-            ))
-        .toList();
-  }
-
-  List<Widget> _buildChapter(List<_Chapter> list) {
-    print('load list ${list.length}');
-    return list
-        .map((chapter) => Card(
-              child: Center(
-                child: Text(chapter.name),
-              ),
-            ))
-        .toList();
+  Widget _buildLoad() {
+    return Center(
+      child: Opacity(opacity: 1.0, child: CircularProgressIndicator()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.comic.title),
-      ),
       body: _buildBody(),
     );
   }
